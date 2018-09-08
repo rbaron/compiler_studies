@@ -23,6 +23,7 @@ Adding func calls:
 
 <Atom>     ::= name <Atom'>
             |  num
+            |  string
 
 <Atom'>    ::= ( <Args> )
             |  $
@@ -30,7 +31,7 @@ Adding func calls:
 <Args>     ::= <Expr> <MoreArgs>
             | $
 
-<MoreArgs> ::= , <Expr>
+<MoreArgs> ::= , <Expr> <MoreArgs>
             | $
 '''
 
@@ -82,6 +83,7 @@ def next_word():
 def is_eof():
     return word.type == '$'
 
+
 def expr():
     return ASTNode(
         'Expr',
@@ -103,7 +105,7 @@ def expr_prime():
         )
     else:
         # Matching $: do nothing. Let the next recursive call consume the current token
-        pass
+        return None
 
 def term():
     return ASTNode(
@@ -126,7 +128,7 @@ def term_prime():
         )
     else:
         # Matching $: do nothing. Let the next recursive call consume the current token
-        pass
+        return None
 
 def factor():
     if word.type == '(':
@@ -156,6 +158,14 @@ def atom():
             [ASTLeaf(w)],
         )
 
+    if word.type == 'string':
+        w = word
+        next_word()
+        return ASTNode(
+            'Atom',
+            [ASTLeaf(w)],
+        )
+
     elif word.type == 'name':
         w = word
         next_word()
@@ -168,17 +178,41 @@ def atom_prime():
     if word.type == '(':
         w = word
         next_word()
-        # TODO: parse arg list
+        a = args()
         if word.type != ')':
             raise InvalidSyntax('Expected ), found', word.type)
 
         next_word()
         return ASTNode(
             'Atom\'',
-            [ASTLeaf(w), ASTLeaf(word)],
+            [ASTLeaf('('), a, ASTLeaf(')')],
         )
     else:
         pass
+
+def args():
+    return ASTNode(
+        'Args',
+        [expr(), more_args()],
+    )
+
+def more_args():
+    if is_eof():
+        return ASTNode(
+            'MoreArgs',
+            [ASTLeaf(word)],
+        )
+
+    elif word.type == ',':
+        w = word
+        next_word()
+        return ASTNode(
+            'MoreArgs',
+            [ASTLeaf(w), expr(), more_args()]
+        )
+
+    else:
+        return
 
 
 def pprint(node, indent=0):
@@ -205,7 +239,9 @@ words = None
 
 
 def main():
-    prog = '(a + b() + c)'
+    prog = '''
+    a + func(1 + len('hello, ' + 'world'), b)
+    '''
     lexemes = scanner1.scan(prog)
 
     global words

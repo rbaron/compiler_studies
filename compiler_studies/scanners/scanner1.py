@@ -52,9 +52,6 @@ def is_alphanumeric(token):
 def is_operator(token):
     return token in '=-+/*><|^&~'
 
-def is_quote(token):
-    return token in '\'\"'
-
 
 def scanner(type, terminator=None):
     def decorator(predicate):
@@ -80,7 +77,8 @@ def guarded_scanner(type, start_guard, end_guard):
             end_pos = pos
 
             if program[end_pos:end_pos+len(start_guard)] != start_guard:
-                raise MalformedInput('Malformed as pos {}'.format(pos))
+                raise MalformedInput('Malformed as pos {}. Expected {}, found {}'.format(
+                    pos, start_guard, program[end_pos:end_pos+len(start_guard)]))
 
             end_pos += len(start_guard)
 
@@ -98,7 +96,11 @@ def guarded_scanner(type, start_guard, end_guard):
 
 
 @guarded_scanner('string', '"', '"')
-def scan_string():
+def scan_double_quote_string():
+    pass
+
+@guarded_scanner('string', '\'', '\'')
+def scan_single_quote_string():
     pass
 
 @guarded_scanner('comment', '/*', '*/')
@@ -171,8 +173,16 @@ def scan(program):
             pos, lexeme = scan_right_paren(program, pos)
             lexemes.append(lexeme)
 
-        elif is_quote(token):
-            pos, lexeme = scan_string(program, pos)
+        elif token == ',':
+            pos += 1
+            lexemes.append(Lexeme(token, program[pos-1]))
+
+        elif token == '"':
+            pos, lexeme = scan_double_quote_string(program, pos)
+            lexemes.append(lexeme)
+
+        elif token == '\'':
+            pos, lexeme = scan_single_quote_string(program, pos)
             lexemes.append(lexeme)
 
         elif is_start_of_name(token):
