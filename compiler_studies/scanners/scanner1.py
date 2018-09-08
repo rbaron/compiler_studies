@@ -1,4 +1,4 @@
-"""Variation of the example_lexer.py with a few enhancements.
+"""Variation of the example_scanner.py with a few enhancements.
 
 """
 
@@ -24,8 +24,11 @@ class Lexeme:
         self.type = type
         self.value = value
 
-    def __str__(self):
+    def __repr__(self):
         return '<Lexeme {} {}>'.format(self.type, self.value)
+
+    def __str__(self):
+        return self.__repr__()
 
 
 def is_number(token):
@@ -49,9 +52,6 @@ def is_alphanumeric(token):
 def is_operator(token):
     return token in '=-+/*><|^&~'
 
-def is_separator(token):
-    return token in ',;(){}[]'
-
 def is_quote(token):
     return token in '\'\"'
 
@@ -66,7 +66,10 @@ def scanner(type, terminator=None):
                 if terminator is not None and terminator(program[end_pos-1]):
                     break
 
-            return end_pos, Lexeme(type, program[pos:end_pos])
+            if type == 'operator':
+                return end_pos, Lexeme(program[pos:end_pos], program[pos:end_pos])
+            else:
+                return end_pos, Lexeme(type, program[pos:end_pos])
         return inner
     return decorator
 
@@ -126,9 +129,11 @@ def scan_name(token):
 def scan_operator(token):
     return is_operator(token)
 
-@scanner('separator', terminator=lambda t: True)
-def scan_separator(token):
-    return is_separator(token)
+def scan_left_paren(program, pos):
+    return pos + 1, Lexeme('(', program[pos])
+
+def scan_right_paren(program, pos):
+    return pos + 1, Lexeme(')', program[pos])
 
 
 def scan(program):
@@ -158,8 +163,12 @@ def scan(program):
             pos, lexeme = scan_operator(program, pos)
             lexemes.append(lexeme)
 
-        elif is_separator(token):
-            pos, lexeme = scan_separator(program, pos)
+        elif token == '(':
+            pos, lexeme = scan_left_paren(program, pos)
+            lexemes.append(lexeme)
+
+        elif token == ')':
+            pos, lexeme = scan_right_paren(program, pos)
             lexemes.append(lexeme)
 
         elif is_quote(token):

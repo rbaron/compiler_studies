@@ -34,8 +34,13 @@ Adding func calls:
             | $
 '''
 
-from compiler_studies.scanners import scanner1
+class Lexeme:
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value
 
+    def __str__(self):
+        return '<Lexeme {} {}>'.format(self.type, self.value)
 
 class ASTNode:
     def __init__(self, type, children=None):
@@ -48,6 +53,21 @@ class ASTNode:
 class InvalidSyntax(Exception):
     pass
 
+
+# Dummy lexer
+def scan(expr):
+    lexemes = []
+    for char in expr:
+        if char >= 'a'  and char <= 'z':
+            lexemes.append(Lexeme('name', char))
+        elif char in '+-*/()':
+            lexemes.append(Lexeme(char, char))
+        elif char >= '0'  and char <= '9':
+            lexemes.append(Lexeme('num', char))
+        else:
+            pass
+
+    return lexemes
 
 def next_word():
     global word
@@ -170,7 +190,7 @@ words = None
 
 def main():
     prog = '5 * (b + c())'
-    lexemes = scanner1.scan(prog)
+    lexemes = scan(prog)
 
     global words
     words = iter(lexemes)
