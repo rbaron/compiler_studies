@@ -282,6 +282,10 @@ def main():
     words = iter(lexemes)
     next_word()
     e = asgn()
+
+    if not is_eof():
+        raise InvalidSyntax('Leftover starting with {}'.format(word))
+
     #pprint(e)
     print_dot(e)
 
