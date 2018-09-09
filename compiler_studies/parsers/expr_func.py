@@ -2,9 +2,28 @@
 
 What would a LL(1) grammar with function calls look like?
 
-Adding func calls:
+Adding func calls and assignment:
 
-<Goal>     ::= <Expr>
+# Note that while semantically it doesn't make much sense for the goal
+# to be "an Asgn" (for assignment expression), I will leave it for now,
+# as it make the rest of the parser.
+
+# One suggestion to mend this is to transform:
+# Asgn => Expr
+# Expr => MathExpr
+
+# Also, node that it only makes sense to assign to a `name`, which is
+# only a particular case of Expr; This can be handled in later stages,
+# for example reporting a syntax error when building the AST out of the
+# "expression AST". Or when emiting the opcodes/interpreting the AST.
+
+
+<Goal>     ::= <Asgn>
+
+<Asgn>     ::= <Expr> <Asng'>
+
+<Asgn'>    ::= = <Expr>
+            |  $
 
 <Expr>     ::= <Term> <Expr'>
 
@@ -84,6 +103,22 @@ def is_eof():
     return word.type == '$'
 
 
+def asgn():
+    return ASTNode(
+        'Asgn',
+        [expr(), asgn_prime()],
+    )
+
+def asgn_prime():
+    if word.type == '=':
+        next_word()
+        return ASTNode(
+            'Asgn\'',
+            [ASTLeaf('='), expr()],
+        )
+    else:
+        return None
+
 def expr():
     return ASTNode(
         'Expr',
@@ -127,7 +162,6 @@ def term_prime():
             [ASTLeaf(w), factor(), term_prime()],
         )
     else:
-        # Matching $: do nothing. Let the next recursive call consume the current token
         return None
 
 def factor():
@@ -188,7 +222,7 @@ def atom_prime():
             [ASTLeaf('('), a, ASTLeaf(')')],
         )
     else:
-        pass
+        return None
 
 def args():
     return ASTNode(
@@ -212,7 +246,7 @@ def more_args():
         )
 
     else:
-        return
+        return None
 
 
 def pprint(node, indent=0):
@@ -240,14 +274,14 @@ words = None
 
 def main():
     prog = '''
-    a + func(1 + len('hello, ' + 'world'), b)
+    a = b + func(1 + len('hello, ' + 'world'), c)
     '''
     lexemes = scanner1.scan(prog)
 
     global words
     words = iter(lexemes)
     next_word()
-    e = expr()
+    e = asgn()
     #pprint(e)
     print_dot(e)
 

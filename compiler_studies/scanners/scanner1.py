@@ -131,12 +131,6 @@ def scan_name(token):
 def scan_operator(token):
     return is_operator(token)
 
-def scan_left_paren(program, pos):
-    return pos + 1, Lexeme('(', program[pos])
-
-def scan_right_paren(program, pos):
-    return pos + 1, Lexeme(')', program[pos])
-
 
 def scan(program):
 
@@ -165,15 +159,7 @@ def scan(program):
             pos, lexeme = scan_operator(program, pos)
             lexemes.append(lexeme)
 
-        elif token == '(':
-            pos, lexeme = scan_left_paren(program, pos)
-            lexemes.append(lexeme)
-
-        elif token == ')':
-            pos, lexeme = scan_right_paren(program, pos)
-            lexemes.append(lexeme)
-
-        elif token == ',':
+        elif token in '=,()':
             pos += 1
             lexemes.append(Lexeme(token, program[pos-1]))
 
