@@ -276,6 +276,9 @@ def main():
     prog = '''
     a = b + func(1 + len('hello, ' + 'world'), c)
     '''
+    prog = '''
+    func()
+    '''
     lexemes = scanner1.scan(prog)
 
     global words
