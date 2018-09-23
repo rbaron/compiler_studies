@@ -3,6 +3,8 @@
 """
 
 KEYWORDS = {
+    'if',
+    'else',
     'double',
     'char',
     'int',
@@ -159,7 +161,7 @@ def scan(program):
             pos, lexeme = scan_operator(program, pos)
             lexemes.append(lexeme)
 
-        elif token in '=,()':
+        elif token in '=,(){}[]':
             pos += 1
             lexemes.append(Lexeme(token, program[pos-1]))
 

@@ -18,7 +18,12 @@ Adding func calls and assignment:
 # "expression AST". Or when emiting the opcodes/interpreting the AST.
 
 
-<Goal>     ::= <Asgn>
+<Goal>     ::= <Stmt>
+
+<Stmt>     ::= <IfElse>
+            |  <Asgn>
+
+<IfElse>   ::= if <Expr> { <Stmt> } else { <Stmt> }
 
 <Asgn>     ::= <Expr> <Asng'>
 
@@ -94,6 +99,26 @@ class FunCall:
     def __str__(self):
         return '<{}: FunCall {} - {} args>'.format(self.id, self.name, len(self.args))
 
+    @property
+    def children(self):
+        return self.args
+
+
+class IfElse:
+    def __init__(self, cond, cons, alt):
+        self.id = ASTNode._id
+        ASTNode._id += 1
+        self.cond = cond
+        self.cons = cons
+        self.alt = alt
+
+    def __str__(self):
+        return '<{} IfElse>'.format(self.id)
+
+    @property
+    def children(self):
+        return [self.cond, self.cons, self.alt]
+
 
 class InvalidSyntax(Exception):
     pass
@@ -113,11 +138,59 @@ def is_eof():
     return word.type == '$'
 
 
+def stmt():
+    ie = ifelse()
+    if ie is not None:
+        return ie
+
+    a = asgn()
+    if a is not None:
+        return a
+
+    raise InvalidSyntax('Invalid statement {}'.format(word))
+
+def ifelse():
+    if word.value != 'if':
+        return None
+
+    next_word()
+    cond = expr()
+
+    if cond is None:
+        raise InvalidSyntax('Unable to parse condition')
+
+    def test(expected_word):
+        if word.value != expected_word:
+            raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
+
+    def next_and_test(expected_word):
+        next_word()
+        test(expected_word)
+
+    test('{')
+
+    next_word()
+    cons = stmt()
+
+    test('}')
+    next_and_test('else')
+    next_and_test('{')
+
+    next_word()
+    alt = stmt()
+
+    test('}')
+
+    next_word()
+
+    return IfElse(cond, cons, alt)
+
 def asgn():
     e = expr()
     prime = asgn_prime()
 
-    if asgn_prime is not None:
+    if prime is not None:
+        import ipdb; ipdb.set_trace()
         return ASTNode(
             '=',
             [e, prime]
@@ -286,7 +359,8 @@ def pprint(node, indent=0):
 def print_dot(node):
 
     def inner(node):
-        if not isinstance(node, ASTNode):
+        if not hasattr(node, 'children'):
+            print('"{}";'.format(node))
             return
 
         for child in node.children:
@@ -306,18 +380,22 @@ def main():
     prog = '''
     a = b + func(1 + len('hello, ' + 'world'), c)
     '''
+    prog = '''
+    if len(f(c) + 2) { f(b, c) } else { 3 }
+    '''
+
     lexemes = scanner1.scan(prog)
 
     global words
     words = iter(lexemes)
     next_word()
-    e = asgn()
+    s = stmt()
 
     if not is_eof():
         raise InvalidSyntax('Leftover starting with {}'.format(word))
 
     #pprint(e)
-    print_dot(e)
+    print_dot(s)
 
 if __name__ == '__main__':
     main()
