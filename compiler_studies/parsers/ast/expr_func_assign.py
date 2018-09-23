@@ -1,32 +1,20 @@
 '''
 
-What would a LL(1) grammar with function calls look like?
+<Goal>      ::= <Stmts>
 
-Adding func calls and assignment:
+<Stmts>     ::= <Stmt> <MoreStmts>
 
-# Note that while semantically it doesn't make much sense for the goal
-# to be "an Asgn" (for assignment expression), I will leave it for now,
-# as it make the rest of the parser.
-
-# One suggestion to mend this is to transform:
-# Asgn => Expr
-# Expr => MathExpr
-
-# Also, node that it only makes sense to assign to a `name`, which is
-# only a particular case of Expr; This can be handled in later stages,
-# for example reporting a syntax error when building the AST out of the
-# "expression AST". Or when emiting the opcodes/interpreting the AST.
-
-
-<Goal>      ::= <Stmt>
+<MoreStmts> ::= <Stmt> <MoreStmts>
+             |  $
 
 <Stmt>      ::= <IfElse>
              |  <FunDef>
              |  <Asgn>
+             |  $
 
-<IfElse>    ::= if <Expr> { <Stmt> } else { <Stmt> }
+<IfElse>    ::= if <Expr> { <Stmts> } else { <Stmts> }
 
-<FunDef>    ::= fun <ArgList> { <Stmt> }
+<FunDef>    ::= fun <ArgList> { <Stmts> }
 
 <ArgList>   ::= ( name <MoreNames> )
 
@@ -111,7 +99,6 @@ class FunCall:
     def children(self):
         return self.args
 
-
 class IfElse:
     def __init__(self, cond, cons, alt):
         self.id = ASTNode._id
@@ -142,8 +129,24 @@ class FunDef:
     def children(self):
         return [self.body]
 
+class Stmts:
+    def __init__(self, stmts):
+        self.id = ASTNode._id
+        ASTNode._id += 1
+        self.stmts = stmts
+
+    def __str__(self):
+        return '<{} Stmts>'.format(self.id)
+
+    @property
+    def children(self):
+        return self.stmts
+
 
 class InvalidSyntax(Exception):
+    pass
+
+class UnableToParseStatement(Exception):
     pass
 
 
@@ -169,6 +172,23 @@ def is_eof():
     return word.type == '$'
 
 
+def stmts():
+    lst = []
+
+    s = stmt()
+
+    if s is None:
+        raise UnableToParseStatement('Invalid statement {}'.format(word))
+
+    while s is not None:
+        lst.append(s)
+        s = stmt()
+
+    return Stmts(lst)
+
+def morestmts():
+    return stmt()
+
 def stmt():
     ie = ifelse()
     if ie is not None:
@@ -182,7 +202,7 @@ def stmt():
     if f is not None:
         return f
 
-    raise InvalidSyntax('Invalid statement {}'.format(word))
+    return None
 
 def ifelse():
     if word.value != 'if':
@@ -197,14 +217,14 @@ def ifelse():
     test('{')
 
     next_word()
-    cons = stmt()
+    cons = stmts()
 
     test('}')
     next_and_test('else')
     next_and_test('{')
 
     next_word()
-    alt = stmt()
+    alt = stmts()
 
     test('}')
 
@@ -222,7 +242,7 @@ def fundef():
     args = arglist()
     next_and_test('{')
     next_word()
-    body = stmt()
+    body = stmts()
     test('}')
 
     next_word()
@@ -269,7 +289,6 @@ def asgn():
     prime = asgn_prime()
 
     if prime is not None:
-        import ipdb; ipdb.set_trace()
         return ASTNode(
             '=',
             [e, prime]
@@ -457,13 +476,19 @@ words = None
 
 def main():
     prog = '''
+    fun func (n) {
+        c = n + 42
+        a + 2
+    }
+
+    if 1 + 2 {
+        print('yes')
+    } else {
+        print('no')
+    }
+
     a = b + func(1 + len('hello, ' + 'world'), c)
-    '''
-    prog = '''
-    if len(f(c) + 2) { f(b, c) } else { 3 }
-    '''
-    prog = '''
-    fun f(a, b) { f(1) }
+
     '''
 
     lexemes = scanner1.scan(prog)
@@ -471,7 +496,7 @@ def main():
     global words
     words = iter(lexemes)
     next_word()
-    s = stmt()
+    s = stmts()
 
     if not is_eof():
         raise InvalidSyntax('Leftover starting with {}'.format(word))
