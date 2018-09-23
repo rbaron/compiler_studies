@@ -18,45 +18,53 @@ Adding func calls and assignment:
 # "expression AST". Or when emiting the opcodes/interpreting the AST.
 
 
-<Goal>     ::= <Stmt>
+<Goal>      ::= <Stmt>
 
-<Stmt>     ::= <IfElse>
-            |  <Asgn>
+<Stmt>      ::= <IfElse>
+             |  <FunDef>
+             |  <Asgn>
 
-<IfElse>   ::= if <Expr> { <Stmt> } else { <Stmt> }
+<IfElse>    ::= if <Expr> { <Stmt> } else { <Stmt> }
 
-<Asgn>     ::= <Expr> <Asng'>
+<FunDef>    ::= fun <ArgList> { <Stmt> }
 
-<Asgn'>    ::= = <Expr>
-            |  $
+<ArgList>   ::= ( name <MoreNames> )
 
-<Expr>     ::= <Term> <Expr'>
+<MoreNames> ::= , name <MoreAtoms>
+             |  $
 
-<Expr'>    ::= + <Term> <Expr'>
-            |  - <Term> <Expr'>
-            |  $
+<Asgn>      ::= <Expr> <Asng'>
 
-<Term>     ::= <Factor> <Term'>
+<Asgn'>     ::= = <Expr>
+             |  $
 
-<Term'>    ::= * <Factor> <Term'>
-            |  / <Factor> <Term'>
-            |  $
+<Expr>      ::= <Term> <Expr'>
 
-<Factor>   ::= ( <Expr> )
-            |  <Atom>
+<Expr'>     ::= + <Term> <Expr'>
+             |  - <Term> <Expr'>
+             |  $
 
-<Atom>     ::= name <Atom'>
-            |  num
-            |  string
+<Term>      ::= <Factor> <Term'>
 
-<Atom'>    ::= ( <Args> )
-            |  $
+<Term'>     ::= * <Factor> <Term'>
+             |  / <Factor> <Term'>
+             |  $
 
-<Args>     ::= <Expr> <MoreArgs>
-            | $
+<Factor>    ::= ( <Expr> )
+             |  <Atom>
 
-<MoreArgs> ::= , <Expr> <MoreArgs>
-            | $
+<Atom>      ::= name <Atom'>
+             |  num
+             |  string
+
+<Atom'>     ::= ( <Args> )
+             |  $
+
+<Args>      ::= <Expr> <MoreArgs>
+             | $
+
+<MoreArgs>  ::= , <Expr> <MoreArgs>
+             | $
 '''
 
 from compiler_studies.scanners import scanner1
@@ -119,6 +127,21 @@ class IfElse:
     def children(self):
         return [self.cond, self.cons, self.alt]
 
+class FunDef:
+    def __init__(self, name, args, body):
+        self.id = ASTNode._id
+        ASTNode._id += 1
+        self.name = name
+        self.args = args
+        self.body = body
+
+    def __str__(self):
+        return '<{} FunDef {} ({})>'.format(self.id, self.name, self.args)
+
+    @property
+    def children(self):
+        return [self.body]
+
 
 class InvalidSyntax(Exception):
     pass
@@ -134,6 +157,14 @@ def next_word():
     else:
         raise InvalidSyntax('Incomplete program')
 
+def test(expected_word):
+    if word.value != expected_word:
+        raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
+
+def next_and_test(expected_word):
+    next_word()
+    test(expected_word)
+
 def is_eof():
     return word.type == '$'
 
@@ -147,6 +178,10 @@ def stmt():
     if a is not None:
         return a
 
+    f = fundef()
+    if f is not None:
+        return f
+
     raise InvalidSyntax('Invalid statement {}'.format(word))
 
 def ifelse():
@@ -158,14 +193,6 @@ def ifelse():
 
     if cond is None:
         raise InvalidSyntax('Unable to parse condition')
-
-    def test(expected_word):
-        if word.value != expected_word:
-            raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
-
-    def next_and_test(expected_word):
-        next_word()
-        test(expected_word)
 
     test('{')
 
@@ -184,6 +211,58 @@ def ifelse():
     next_word()
 
     return IfElse(cond, cons, alt)
+
+def fundef():
+    if word.value != 'fun':
+        return None
+
+    next_word()
+    name = word.value
+    next_word()
+    args = arglist()
+    next_and_test('{')
+    next_word()
+    body = stmt()
+    test('}')
+
+    next_word()
+
+    return FunDef(name, args, body)
+
+def arglist():
+    if word.type != '(':
+        raise InvalidSyntax('Expected (, found {}'.format(word.type))
+
+    next_word()
+
+    if word.type != 'name':
+        raise InvalidSyntax('Expected name, found {}'.format(word.type))
+
+    args = [word.value]
+
+    next_word()
+    more = morenames()
+    while more is not None:
+        args.append(more)
+        more = morenames()
+
+    if word.type != ')':
+        raise InvalidSyntax('Expected ), found {}'.format(word.type))
+
+    return args
+
+def morenames():
+    if word.type != ',':
+        return None
+
+    next_word()
+
+    if word.type != 'name':
+        raise InvalidSyntax('Expected name, found {}'.format(word.type))
+
+    name = word.value
+    next_word()
+    return name
 
 def asgn():
     e = expr()
@@ -335,11 +414,11 @@ def args():
     a = expr()
     while a is not None:
         arglist.append(a)
-        a = more_args()
+        a = moreargs()
 
     return arglist
 
-def more_args():
+def moreargs():
     if word.type == ',':
         w = word
         next_word()
@@ -382,6 +461,9 @@ def main():
     '''
     prog = '''
     if len(f(c) + 2) { f(b, c) } else { 3 }
+    '''
+    prog = '''
+    fun f(a, b) { f(1) }
     '''
 
     lexemes = scanner1.scan(prog)

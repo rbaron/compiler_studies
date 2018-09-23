@@ -5,6 +5,7 @@
 KEYWORDS = {
     'if',
     'else',
+    'fun',
     'double',
     'char',
     'int',
