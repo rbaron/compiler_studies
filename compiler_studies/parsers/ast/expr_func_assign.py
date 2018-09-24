@@ -58,13 +58,20 @@
 from compiler_studies.scanners import scanner1
 
 
-class ASTNode:
-    _id = 0
+class Node:
+    __counter = 0
 
+    def __init__(self):
+        self.id = Node.__counter
+        Node.__counter += 1
+
+    def __str__(self):
+        return '<{} {}>'.format(self.id, self.__class__.__name__)
+
+
+class ASTNode(Node):
     def __init__(self, type, children=None):
-        self.id = ASTNode._id
-        ASTNode._id += 1
-
+        super().__init__()
         self.type = type
 
         # Filter out production rules -> $
@@ -74,35 +81,53 @@ class ASTNode:
         return '<{}:{}>'.format(self.id, self.type)
 
 
-class ASTLeaf:
+class ASTLeaf(Node):
     def __init__(self, value):
-        self.id = ASTNode._id
-        ASTNode._id += 1
+        super().__init__()
+        self.value = value
 
+
+class Atom(Node):
+    def __init__(self, value):
+        super().__init__()
         self.value = value
 
     def __str__(self):
-        return '<{}: {}>'.format(self.id, self.value)
+        return '<{} {} {}>'.format(self.id, type(self).__name__, self.value)
 
 
-class FunCall:
+class Num(Atom):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class String(Atom):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class VarLookup(Atom):
+    def __init__(self, value):
+        super().__init__(value)
+
+
+class FunCall(Node):
     def __init__(self, name, args):
-        self.id = ASTNode._id
-        ASTNode._id += 1
+        super().__init__()
         self.name = name
         self.args = args
 
     def __str__(self):
-        return '<{}: FunCall {} - {} args>'.format(self.id, self.name, len(self.args))
+        return '<{} FunCall {} | {} args>'.format(self.id, self.name, len(self.args))
 
     @property
     def children(self):
         return self.args
 
-class IfElse:
+
+class IfElse(Node):
     def __init__(self, cond, cons, alt):
-        self.id = ASTNode._id
-        ASTNode._id += 1
+        super().__init__()
         self.cond = cond
         self.cons = cons
         self.alt = alt
@@ -114,10 +139,10 @@ class IfElse:
     def children(self):
         return [self.cond, self.cons, self.alt]
 
-class FunDef:
+
+class FunDef(Node):
     def __init__(self, name, args, body):
-        self.id = ASTNode._id
-        ASTNode._id += 1
+        super().__init__()
         self.name = name
         self.args = args
         self.body = body
@@ -129,10 +154,9 @@ class FunDef:
     def children(self):
         return [self.body]
 
-class Stmts:
+class Stmts(Node):
     def __init__(self, stmts):
-        self.id = ASTNode._id
-        ASTNode._id += 1
+        super().__init__()
         self.stmts = stmts
 
     def __str__(self):
@@ -144,9 +168,6 @@ class Stmts:
 
 
 class InvalidSyntax(Exception):
-    pass
-
-class UnableToParseStatement(Exception):
     pass
 
 
@@ -164,9 +185,11 @@ def test(expected_word):
     if word.value != expected_word:
         raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
 
+
 def next_and_test(expected_word):
     next_word()
     test(expected_word)
+
 
 def is_eof():
     return word.type == '$'
@@ -178,31 +201,34 @@ def stmts():
     s = stmt()
 
     if s is None:
-        raise UnableToParseStatement('Invalid statement {}'.format(word))
+        raise InvalidSyntax('Invalid statement {}'.format(word))
 
     while s is not None:
         lst.append(s)
-        s = stmt()
+        s = morestmts()
 
     return Stmts(lst)
 
+
 def morestmts():
     return stmt()
+
 
 def stmt():
     ie = ifelse()
     if ie is not None:
         return ie
 
-    a = asgn()
-    if a is not None:
-        return a
-
     f = fundef()
     if f is not None:
         return f
 
+    a = asgn()
+    if a is not None:
+        return a
+
     return None
+
 
 def ifelse():
     if word.value != 'if':
@@ -232,6 +258,7 @@ def ifelse():
 
     return IfElse(cond, cons, alt)
 
+
 def fundef():
     if word.value != 'fun':
         return None
@@ -248,6 +275,7 @@ def fundef():
     next_word()
 
     return FunDef(name, args, body)
+
 
 def arglist():
     if word.type != '(':
@@ -271,6 +299,7 @@ def arglist():
 
     return args
 
+
 def morenames():
     if word.type != ',':
         return None
@@ -284,6 +313,7 @@ def morenames():
     next_word()
     return name
 
+
 def asgn():
     e = expr()
     prime = asgn_prime()
@@ -296,12 +326,14 @@ def asgn():
     else:
         return e
 
+
 def asgn_prime():
     if word.type == '=':
         next_word()
         return expr()
     else:
         return None
+
 
 def expr():
     t = term()
@@ -312,6 +344,7 @@ def expr():
         return prime
     else:
         return t
+
 
 def expr_prime():
     if word.type in '+-':
@@ -335,6 +368,7 @@ def expr_prime():
 
     return None
 
+
 def term():
     f = factor()
     prime = term_prime()
@@ -345,6 +379,7 @@ def term():
 
     else:
         return f
+
 
 def term_prime():
     if word.type in '*/':
@@ -369,6 +404,7 @@ def term_prime():
     else:
         return None
 
+
 def factor():
     if word.type == '(':
         next_word()
@@ -382,16 +418,17 @@ def factor():
     else:
         return atom()
 
+
 def atom():
     if word.type == 'num':
         w = word
         next_word()
-        return ASTLeaf(w)
+        return Num(w.value)
 
     if word.type == 'string':
         w = word
         next_word()
-        return ASTLeaf(w)
+        return String(w.value)
 
     elif word.type == 'name':
         w = word
@@ -399,19 +436,21 @@ def atom():
 
         prime = atom_prime()
 
+        # Function call
         if prime is not None:
             return FunCall(
                 w.value,
                 prime,
             )
 
-        # Var lookup
+        # Variable lookup
         else:
-            return ASTLeaf(
-                'VarLookup {}'.format(w.value),
-            )
+            return VarLookup(w.value)
+
     else:
+        # Error?
         return None
+
 
 def atom_prime():
     if word.type == '(':
@@ -426,6 +465,7 @@ def atom_prime():
         return a
     else:
         return None
+
 
 def args():
     arglist = []
@@ -488,7 +528,6 @@ def main():
     }
 
     a = b + func(1 + len('hello, ' + 'world'), c)
-
     '''
 
     lexemes = scanner1.scan(prog)
