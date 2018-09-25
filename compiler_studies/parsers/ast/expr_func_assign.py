@@ -184,46 +184,46 @@ class InvalidSyntax(Exception):
     pass
 
 
-def next_word():
-    global word
-    if word is None or not is_eof():
-        try:
-            word = next(words)
-        except StopIteration:
-            word = scanner1.Lexeme('$', '$')
-    else:
-        raise InvalidSyntax('Incomplete program')
+#def next_word():
+#    global word
+#    if word is None or not is_eof():
+#        try:
+#            word = next(words)
+#        except StopIteration:
+#            word = scanner1.Lexeme('$', '$')
+#    else:
+#        raise InvalidSyntax('Incomplete program')
+#
+#def test(expected_word):
+#    if word.value != expected_word:
+#        raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
+#
+#
+#def next_and_test(expected_word):
+#    next_word()
+#    test(expected_word)
+#
+#
+#def is_eof():
+#    return word.type == '$'
 
-def test(expected_word):
-    if word.value != expected_word:
-        raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
 
-
-def next_and_test(expected_word):
-    next_word()
-    test(expected_word)
-
-
-def is_eof():
-    return word.type == '$'
-
-
-def stmts():
+def stmts(stream):
     lst = []
 
-    s = stmt()
+    s = stmt(stream)
 
     if s is None:
         raise InvalidSyntax('Invalid statement {}'.format(word))
 
     while s is not None:
         lst.append(s)
-        s = morestmts()
+        s = morestmts(stream)
 
     return Stmts(lst)
 
 
-def morestmts():
+def morestmts(stream):
     # Bit of hand-waving here:
     # When parsing a block like this:
     # fun hello_world() {
@@ -234,129 +234,129 @@ def morestmts():
     # The guts of the function contains multiple statements.
     # We're looking ahead here so we don't try to parse the
     # closing } as a statement. Same for $ in the top level.
-    if word.type in '$}':
+    if stream.head.type in '$}':
         return None
 
-    return stmt()
+    return stmt(stream)
 
 
-def stmt():
-    ie = ifelse()
+def stmt(stream):
+    ie = ifelse(stream)
     if ie is not None:
         return ie
 
-    f = fundef()
+    f = fundef(stream)
     if f is not None:
         return f
 
-    r = ret()
+    r = ret(stream)
     if r is not None:
         return r
 
-    a = asgn()
+    a = asgn(stream)
     if a is not None:
         return a
 
     raise InvalidSyntax('Unable to parse statement')
 
 
-def ret():
-    if word.value != 'return':
+def ret(stream):
+    if stream.head.value != 'return':
         return None
 
-    next_word()
-    e = expr()
+    next(stream)
+    e = expr(stream)
 
     return Return(e)
 
 
-def ifelse():
-    if word.value != 'if':
+def ifelse(stream):
+    if stream.head.value != 'if':
         return None
 
-    next_word()
-    cond = expr()
+    next(stream)
+    cond = expr(stream)
 
     if cond is None:
         raise InvalidSyntax('Unable to parse condition')
 
-    test('{')
+    stream.test('{')
 
-    next_word()
-    cons = stmts()
+    next(stream)
+    cons = stmts(stream)
 
-    test('}')
-    next_and_test('else')
-    next_and_test('{')
+    stream.test('}')
+    stream.next_and_test('else')
+    stream.next_and_test('{')
 
-    next_word()
-    alt = stmts()
+    next(stream)
+    alt = stmts(stream)
 
-    test('}')
+    stream.test('}')
 
-    next_word()
+    next(stream)
 
     return IfElse(cond, cons, alt)
 
 
-def fundef():
-    if word.value != 'fun':
+def fundef(stream):
+    if stream.head.value != 'fun':
         return None
 
-    next_word()
-    name = word.value
-    next_word()
-    args = arglist()
-    next_and_test('{')
-    next_word()
-    body = stmts()
-    test('}')
+    next(stream)
+    name = stream.head.value
+    next(stream)
+    args = arglist(stream)
+    stream.next_and_test('{')
+    next(stream)
+    body = stmts(stream)
+    stream.test('}')
 
-    next_word()
+    next(stream)
 
     return FunDef(name, args, body)
 
 
-def arglist():
-    if word.type != '(':
+def arglist(stream):
+    if stream.head.type != '(':
         raise InvalidSyntax('Expected (, found {}'.format(word.type))
 
-    next_word()
+    next(stream)
 
-    if word.type != 'name':
+    if stream.head.type != 'name':
         raise InvalidSyntax('Expected name, found {}'.format(word.type))
 
-    args = [word.value]
+    args = [stream.head.value]
 
-    next_word()
-    more = morenames()
+    next(stream)
+    more = morenames(stream)
     while more is not None:
         args.append(more)
-        more = morenames()
+        more = morenames(stream)
 
-    if word.type != ')':
+    if stream.head.type != ')':
         raise InvalidSyntax('Expected ), found {}'.format(word.type))
 
     return args
 
 
-def morenames():
-    if word.type != ',':
+def morenames(stream):
+    if stream.head.type != ',':
         return None
 
-    next_word()
+    next(stream)
 
-    if word.type != 'name':
+    if stream.head.type != 'name':
         raise InvalidSyntax('Expected name, found {}'.format(word.type))
 
-    name = word.value
-    next_word()
+    name = stream.head.value
+    next(stream)
     return name
 
 
-def asgn():
-    e = expr()
-    prime = asgn_prime()
+def asgn(stream):
+    e = expr(stream)
+    prime = asgn_prime(stream)
 
     if prime is not None:
         return ASTNode(
@@ -367,17 +367,17 @@ def asgn():
         return e
 
 
-def asgn_prime():
-    if word.type == '=':
-        next_word()
-        return expr()
+def asgn_prime(stream):
+    if stream.head.type == '=':
+        next(stream)
+        return expr(stream)
     else:
         return None
 
 
-def expr():
-    t = term()
-    prime = expr_prime()
+def expr(stream):
+    t = term(stream)
+    prime = expr_prime(stream)
 
     if prime is not None:
         prime.children = [t] + prime.children
@@ -386,12 +386,12 @@ def expr():
         return t
 
 
-def expr_prime():
-    if word.type in '+-':
-        w = word
-        next_word()
-        t = term()
-        prime = expr_prime()
+def expr_prime(stream):
+    if stream.head.type in '+-':
+        w = stream.head
+        next(stream)
+        t = term(stream)
+        prime = expr_prime(stream)
 
         if prime is not None:
             prime.children = [t] + prime.children
@@ -409,9 +409,9 @@ def expr_prime():
     return None
 
 
-def term():
-    f = factor()
-    prime = term_prime()
+def term(stream):
+    f = factor(stream)
+    prime = term_prime(stream)
 
     if prime is not None:
         prime.children = [f] + prime.children
@@ -421,13 +421,13 @@ def term():
         return f
 
 
-def term_prime():
-    if word.type in '*/':
-        w = word
-        next_word()
+def term_prime(stream):
+    if stream.head.type in '*/':
+        w = stream.head
+        next(stream)
 
-        f = factor()
-        prime = term_prime()
+        f = factor(stream)
+        prime = term_prime(stream)
 
         if prime is not None:
             prime.children = [t] + prime.children
@@ -445,36 +445,37 @@ def term_prime():
         return None
 
 
-def factor():
-    if word.type == '(':
-        next_word()
-        e = expr()
+def factor(stream):
+    if stream.head.type == '(':
+        next(stream)
+        e = expr(stream)
 
         if word.type != ')':
             raise InvalidSyntax('Expected ), found', word.type)
 
-        next_word()
+        next(stream)
         return e
     else:
-        return atom()
+        return atom(stream)
 
 
-def atom():
-    if word.type == 'num':
-        w = word
-        next_word()
+def atom(stream):
+    if stream.head.type == 'num':
+        w = stream.head
+        next(stream)
         return Num(w.value)
 
-    if word.type == 'string':
-        w = word
-        next_word()
+    if stream.head.type == 'string':
+        w = stream.head
+        next(stream)
         return String(w.value)
 
-    elif word.type == 'name':
+    elif stream.head.type == 'name':
         w = word
-        next_word()
+        w = stream.head
+        next(stream)
 
-        prime = atom_prime()
+        prime = atom_prime(stream)
 
         # Function call
         if prime is not None:
@@ -490,41 +491,44 @@ def atom():
     raise InvalidSyntax('Unable to parse atom {}'.format(word.value))
 
 
-def atom_prime():
-    if word.type == '(':
-        w = word
-        next_word()
-        a = args()
-        if word.type != ')':
+def atom_prime(stream):
+    if stream.head.type == '(':
+        w = stream.head
+        next(stream)
+        a = args(stream)
+        if stream.head.type != ')':
             raise InvalidSyntax('Expected ), found', word.type)
 
-        next_word()
+        next(stream)
 
         return a
     else:
         return None
 
 
-def args():
+def args(stream):
     arglist = []
 
-    a = expr()
+    a = expr(stream)
     while a is not None:
         arglist.append(a)
-        a = moreargs()
+        a = moreargs(stream)
 
     return arglist
 
 
-def moreargs():
-    if word.type == ',':
-        w = word
-        next_word()
+def moreargs(stream):
+    if stream.head.type == ',':
+        w = stream.head
+        next(stream)
 
-        return expr()
+        return expr(stream)
 
     else:
         return None
+
+
+parse = stmts
 
 
 def pprint(node, indent=0):
@@ -550,6 +554,38 @@ def print_dot(node):
     print('}')
 
 
+class Stream:
+    def __init__(self, lexemes):
+        self.iter = iter(lexemes)
+        self.head = None
+        next(self)
+
+    def __next__(self):
+        if self.head is None or not self.is_eof():
+            try:
+                self.head = next(self.iter)
+            except StopIteration:
+                self.head = scanner1.Lexeme('$', '$')
+
+            return self.head
+        else:
+            raise InvalidSyntax('Incomplete program')
+
+    def __iter__(self):
+        return self
+
+    def test(self, expected_value):
+        if self.head.value != expected_value:
+            raise InvalidSyntax('Expected {}; found {}'.format(expected_value, self.head.value))
+
+    def next_and_test(self, value):
+        next(self)
+        self.test(value)
+
+    def is_eof(self):
+        return self.head.type == '$'
+
+
 def main():
     prog = '''
     fun func (n) {
@@ -569,16 +605,15 @@ def main():
 
     lexemes = scanner1.scan(prog)
 
-    global words
-    words = iter(lexemes)
-    next_word()
-    s = stmts()
+    stream = Stream(lexemes)
+    s = parse(stream)
 
-    if not is_eof():
+    if not stream.is_eof():
         raise InvalidSyntax('Leftover starting with {}'.format(word))
 
     #pprint(e)
     print_dot(s)
+
 
 if __name__ == '__main__':
     main()
