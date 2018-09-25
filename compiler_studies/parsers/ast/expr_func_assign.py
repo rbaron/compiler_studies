@@ -9,12 +9,14 @@
 
 <Stmt>      ::= <IfElse>
              |  <FunDef>
+             |  <Return>
              |  <Asgn>
-             |  $
 
 <IfElse>    ::= if <Expr> { <Stmts> } else { <Stmts> }
 
 <FunDef>    ::= fun <ArgList> { <Stmts> }
+
+<Return>    ::= return <Expr>
 
 <ArgList>   ::= ( name <MoreNames> )
 
@@ -56,6 +58,10 @@
 '''
 
 from compiler_studies.scanners import scanner1
+
+
+word = None
+words = None
 
 
 class Node:
@@ -154,6 +160,13 @@ class FunDef(Node):
     def children(self):
         return [self.body]
 
+
+class Return(Node):
+    def __init__(self, expr):
+        super().__init__()
+        self.expr = expr
+
+
 class Stmts(Node):
     def __init__(self, stmts):
         super().__init__()
@@ -211,6 +224,19 @@ def stmts():
 
 
 def morestmts():
+    # Bit of hand-waving here:
+    # When parsing a block like this:
+    # fun hello_world() {
+    #   say_hello()
+    #   say_world()
+    # }
+    #
+    # The guts of the function contains multiple statements.
+    # We're looking ahead here so we don't try to parse the
+    # closing } as a statement. Same for $ in the top level.
+    if word.type in '$}':
+        return None
+
     return stmt()
 
 
@@ -223,11 +249,25 @@ def stmt():
     if f is not None:
         return f
 
+    r = ret()
+    if r is not None:
+        return r
+
     a = asgn()
     if a is not None:
         return a
 
-    return None
+    raise InvalidSyntax('Unable to parse statement')
+
+
+def ret():
+    if word.value != 'return':
+        return None
+
+    next_word()
+    e = expr()
+
+    return Return(e)
 
 
 def ifelse():
@@ -447,9 +487,7 @@ def atom():
         else:
             return VarLookup(w.value)
 
-    else:
-        # Error?
-        return None
+    raise InvalidSyntax('Unable to parse atom {}'.format(word.value))
 
 
 def atom_prime():
@@ -477,6 +515,7 @@ def args():
 
     return arglist
 
+
 def moreargs():
     if word.type == ',':
         w = word
@@ -494,6 +533,7 @@ def pprint(node, indent=0):
         for child in node.children:
             pprint(child, indent+1)
 
+
 def print_dot(node):
 
     def inner(node):
@@ -510,15 +550,12 @@ def print_dot(node):
     print('}')
 
 
-word = None
-words = None
-
-
 def main():
     prog = '''
     fun func (n) {
         c = n + 42
-        a + 2
+        a b
+        return c
     }
 
     if 1 + 2 {

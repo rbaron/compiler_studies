@@ -6,15 +6,7 @@ KEYWORDS = {
     'if',
     'else',
     'fun',
-    'double',
-    'char',
-    'int',
-    'long',
-    'signed',
-    'struct',
-    'typedef',
-    'unsigned',
-    'void',
+    'return',
 }
 
 
