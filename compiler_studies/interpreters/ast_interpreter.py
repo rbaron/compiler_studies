@@ -121,7 +121,6 @@ class Env(dict):
 def main():
     global_env = Env(
         print=NativeFunction('print', print),
-        b=3,
     )
 
     prog = '''
@@ -137,12 +136,14 @@ def main():
             }
         }
 
-        print(fib(5))
+        print(fib(8))
     '''
 
     stream = parser.Stream(scanner.scan(prog))
     ast = parser.parse(stream)
     res = eval(ast, global_env)
+
+    print('res: ', res)
 
 
 if __name__ == '__main__':

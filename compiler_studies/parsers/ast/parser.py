@@ -184,30 +184,6 @@ class InvalidSyntax(Exception):
     pass
 
 
-#def next_word():
-#    global word
-#    if word is None or not is_eof():
-#        try:
-#            word = next(words)
-#        except StopIteration:
-#            word = scanner1.Lexeme('$', '$')
-#    else:
-#        raise InvalidSyntax('Incomplete program')
-#
-#def test(expected_word):
-#    if word.value != expected_word:
-#        raise InvalidSyntax('Expected {}, found {}'.format(expected_word, word.value))
-#
-#
-#def next_and_test(expected_word):
-#    next_word()
-#    test(expected_word)
-#
-#
-#def is_eof():
-#    return word.type == '$'
-
-
 def stmts(stream):
     lst = []
 
