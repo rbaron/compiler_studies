@@ -9,6 +9,10 @@ KEYWORDS = {
     'return',
 }
 
+OPERATORS = {
+    '=', '-', '+', '/', '*', '>', '<', '|', '^', '&', '~',# '==', '>=', '<=',
+}
+
 
 class MalformedInput(Exception):
     pass
@@ -45,7 +49,7 @@ def is_alphanumeric(token):
     return is_number(token) or is_start_of_name(token) or token in '_'
 
 def is_operator(token):
-    return token in '=-+/*><|^&~'
+    return token in OPERATORS
 
 
 def scanner(type, terminator=None):
@@ -154,7 +158,7 @@ def scan(program):
             pos, lexeme = scan_operator(program, pos)
             lexemes.append(lexeme)
 
-        elif token in '=,(){}[]':
+        elif token in ',(){}[]':
             pos += 1
             lexemes.append(Lexeme(token, program[pos-1]))
 
@@ -181,8 +185,8 @@ def scan(program):
 
 
 if __name__ == '__main__':
-    program = """
-    int my_n = 5/2;
+    program = '''
+    my_n = 5/2
 
     // this is a single line comment
 
@@ -191,9 +195,8 @@ if __name__ == '__main__':
     line
     comment */
 
-    void my_func(int a, char *b) { print("hello"); };
-
-    """
+    fun my_func(a, b) { print("hello") }
+    '''
 
     for lexeme in scan(program):
         print(lexeme)

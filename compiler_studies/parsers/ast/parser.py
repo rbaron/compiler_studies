@@ -13,7 +13,7 @@
              |  <Asgn>
              |  <Comment>
 
-<IfElse>    ::= if <Expr> { <Stmts> } else { <Stmts> }
+<IfElse>    ::= if <Comp> { <Stmts> } else { <Stmts> }
 
 <FunDef>    ::= fun <ArgList> { <Stmts> }
 
@@ -26,9 +26,17 @@
 
 <Comment>   ::= comment
 
-<Asgn>      ::= <Expr> <Asng'>
+# Run time check?
+<Asgn>      ::= <Comp> <Asng'>
 
-<Asgn'>     ::= = <Expr>
+<Asgn'>     ::= = <Comp>
+             |  $
+
+<Comp>      ::= <Expr> <Comp'>
+
+<Comp'>     ::= == <Expr>
+             |  >= <Expr>
+             |  <= <Expr>
              |  $
 
 <Expr>      ::= <Term> <Expr'>
@@ -265,7 +273,7 @@ def ifelse(stream):
         return None
 
     next(stream)
-    cond = expr(stream)
+    cond = comp(stream)
 
     if cond is None:
         raise InvalidSyntax('Unable to parse condition')
@@ -345,7 +353,7 @@ def morenames(stream):
 
 
 def asgn(stream):
-    e = expr(stream)
+    e = comp(stream)
     prime = asgn_prime(stream)
 
     if prime is not None:
@@ -360,9 +368,31 @@ def asgn(stream):
 def asgn_prime(stream):
     if stream.head.type == '=':
         next(stream)
-        return expr(stream)
+        return comp(stream)
     else:
         return None
+
+
+def comp(stream):
+    e = expr(stream)
+    prime = comp_prime(stream)
+
+    if prime is not None:
+        prime.children = [e] + prime.children
+        return prime
+    else:
+        return e
+
+
+def comp_prime(stream):
+    if stream.head.value in ['==', '<=', '>=']:
+        w = stream.head
+        next(stream)
+        e = expr(stream)
+
+        return ASTNode(w.type, [e])
+
+    return None
 
 
 def expr(stream):
@@ -478,7 +508,7 @@ def atom(stream):
         else:
             return VarLookup(w.value)
 
-    raise InvalidSyntax('Unable to parse atom {}'.format(word.value))
+    raise InvalidSyntax('Unable to parse atom {}'.format(stream.head.value))
 
 
 def atom_prime(stream):
@@ -487,7 +517,7 @@ def atom_prime(stream):
         next(stream)
         a = args(stream)
         if stream.head.type != ')':
-            raise InvalidSyntax('Expected ), found', word.type)
+            raise InvalidSyntax('Expected ), found', stream.head.type)
 
         next(stream)
 

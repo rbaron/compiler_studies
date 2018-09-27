@@ -56,6 +56,12 @@ def eval_astnode(ast, env):
        return eval(left, env) * eval(right, env)
     elif ast.type == '/':
        return eval(left, env) / eval(right, env)
+    elif ast.type == '==':
+       return eval(left, env) == eval(right, env)
+    elif ast.type == '>=':
+       return eval(left, env) >= eval(right, env)
+    elif ast.type == '<=':
+       return eval(left, env) <= eval(right, env)
 
 
 def eval_funcall(ast, env):
@@ -126,26 +132,20 @@ def main():
     prog = '''
         // Fibonacci
         fun fib (n) {
-            if n {
-                if n-1 {
-                    return fib(n-1) + fib(n-2)
-                } else {
-                    return 1
-                }
-            } else {
+            if n <= 1 {
                 return 1
+            } else {
+                return fib(n-1) + fib(n-2)
             }
         }
 
-        /* Prints fib(n) */
-        print(fib(8))
+        /* Multiline comment showcase */
+        print('The result is:', fib(5))
     '''
 
     stream = parser.Stream(scanner.scan(prog))
     ast = parser.parse(stream)
     res = eval(ast, global_env)
-
-    print('res: ', res)
 
 
 if __name__ == '__main__':
