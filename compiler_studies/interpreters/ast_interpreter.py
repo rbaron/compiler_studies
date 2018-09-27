@@ -124,6 +124,7 @@ def main():
     )
 
     prog = '''
+        // Fibonacci
         fun fib (n) {
             if n {
                 if n-1 {
@@ -136,6 +137,7 @@ def main():
             }
         }
 
+        /* Prints fib(n) */
         print(fib(8))
     '''
 

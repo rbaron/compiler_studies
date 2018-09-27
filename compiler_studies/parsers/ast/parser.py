@@ -11,6 +11,7 @@
              |  <FunDef>
              |  <Return>
              |  <Asgn>
+             |  <Comment>
 
 <IfElse>    ::= if <Expr> { <Stmts> } else { <Stmts> }
 
@@ -22,6 +23,8 @@
 
 <MoreNames> ::= , name <MoreAtoms>
              |  $
+
+<Comment>   ::= comment
 
 <Asgn>      ::= <Expr> <Asng'>
 
@@ -100,6 +103,12 @@ class Atom(Node):
 
     def __str__(self):
         return '<{} {} {}>'.format(self.id, type(self).__name__, self.value)
+
+
+class Comment(Node):
+    def __init__(self, value):
+        super().__init__()
+        self.value = value
 
 
 class Num(Atom):
@@ -217,6 +226,11 @@ def morestmts(stream):
 
 
 def stmt(stream):
+    if stream.head.type == 'comment':
+        w = stream.head
+        next(stream)
+        return Comment(w.value)
+
     ie = ifelse(stream)
     if ie is not None:
         return ie
