@@ -33,9 +33,8 @@ def eval(ast, env):
     elif isinstance(ast, parser.IfElse):
         return eval(ast.cons, env) if eval(ast.cond, env) else eval(ast.alt, env)
 
-    elif isinstance(ast, parser.FunDef):
-        env[ast.name] = Function(ast.name, ast.args, ast.body, env)
-        return env[ast.name]
+    elif isinstance(ast, parser.LambDef):
+        return Function('lambda', ast.args, ast.body, env)
 
     elif isinstance(ast, parser.FunCall):
         return eval_funcall(ast, env)
@@ -65,7 +64,7 @@ def eval_astnode(ast, env):
 
 
 def eval_funcall(ast, env):
-    fun = env.lookup(ast.name)
+    fun = eval(ast.expr, env)
 
     args = [eval(a, env) for a in ast.args]
 
@@ -130,8 +129,7 @@ def main():
     )
 
     prog = '''
-        // Fibonacci
-        fun fib (n) {
+        fib = \(n) {
             if n <= 1 {
                 return 1
             } else {
@@ -139,13 +137,20 @@ def main():
             }
         }
 
-        /* Multiline comment showcase */
         print('The result is:', fib(5))
+    '''
+    prog = '''
+        a = \() {
+            // b = 1 - closure
+            return \() { return 1 }
+        }
+        print(a()())
     '''
 
     stream = parser.Stream(scanner.scan(prog))
     ast = parser.parse(stream)
     res = eval(ast, global_env)
+    print(global_env)
 
 
 if __name__ == '__main__':

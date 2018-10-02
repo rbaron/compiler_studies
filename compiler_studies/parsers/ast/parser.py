@@ -8,18 +8,16 @@
              |  $
 
 <Stmt>      ::= <IfElse>
-             |  <FunDef>
              |  <Return>
              |  <Asgn>
              |  <Comment>
 
 <IfElse>    ::= if <Comp> { <Stmts> } else { <Stmts> }
 
-<FunDef>    ::= fun <ArgList> { <Stmts> }
-
 <Return>    ::= return <Expr>
 
-<ArgList>   ::= ( name <MoreNames> )
+<ArgNames>  ::= name <MoreNames>
+             |  $
 
 <MoreNames> ::= , name <MoreAtoms>
              |  $
@@ -51,21 +49,29 @@
              |  / <Factor> <Term'>
              |  $
 
-<Factor>    ::= ( <Expr> )
-             |  <Atom>
+<Factor>    ::= ( <Comp> )
+             |  <AtomCalls>
 
-<Atom>      ::= name <Atom'>
+<AtomCalls>  ::= <Atom> <CallsArgs>
+
+<CallsArgs>  ::= ( <Args> ) <CallsArgs>
+             |   $
+
+<Atom>      ::= name
              |  num
              |  string
-
-<Atom'>     ::= ( <Args> )
-             |  $
+             |  <LambDef>
 
 <Args>      ::= <Expr> <MoreArgs>
              | $
 
 <MoreArgs>  ::= , <Expr> <MoreArgs>
              | $
+
+<LambDef>   ::= \ <ArgsDef> { <Stmts> }
+
+<ArgsDef>   ::= ( <ArgNames> )
+
 '''
 
 from compiler_studies.scanners import scanner1
@@ -135,13 +141,13 @@ class VarLookup(Atom):
 
 
 class FunCall(Node):
-    def __init__(self, name, args):
+    def __init__(self, expr, args):
         super().__init__()
-        self.name = name
+        self.expr = expr
         self.args = args
 
     def __str__(self):
-        return '<{} FunCall {} | {} args>'.format(self.id, self.name, len(self.args))
+        return '<{} FunCall {} | {} args>'.format(self.id, self.expr, len(self.args))
 
     @property
     def children(self):
@@ -172,6 +178,20 @@ class FunDef(Node):
 
     def __str__(self):
         return '<{} FunDef {} ({})>'.format(self.id, self.name, self.args)
+
+    @property
+    def children(self):
+        return [self.body]
+
+
+class LambDef(Node):
+    def __init__(self, args, body):
+        super().__init__()
+        self.args = args
+        self.body = body
+
+    def __str__(self):
+        return '<{} LambDef ({})>'.format(self.id, self.args)
 
     @property
     def children(self):
@@ -243,10 +263,6 @@ def stmt(stream):
     if ie is not None:
         return ie
 
-    f = fundef(stream)
-    if f is not None:
-        return f
-
     r = ret(stream)
     if r is not None:
         return r
@@ -297,43 +313,32 @@ def ifelse(stream):
     return IfElse(cond, cons, alt)
 
 
-def fundef(stream):
-    if stream.head.value != 'fun':
+def argsdef(stream):
+    if stream.head.type != '(':
+        raise InvalidSyntax('Expected (, found {}'.format(stream.head.type))
+
+    next(stream)
+
+    args = argsnames(stream) or []
+
+    if stream.head.type != ')':
+        raise InvalidSyntax('Expected ), found {}'.format(stream.head.type))
+
+    next(stream)
+    return args
+
+
+def argsnames(stream):
+    if stream.head.type != 'name':
         return None
 
-    next(stream)
-    name = stream.head.value
-    next(stream)
-    args = arglist(stream)
-    stream.next_and_test('{')
-    next(stream)
-    body = stmts(stream)
-    stream.test('}')
-
-    next(stream)
-
-    return FunDef(name, args, body)
-
-
-def arglist(stream):
-    if stream.head.type != '(':
-        raise InvalidSyntax('Expected (, found {}'.format(word.type))
-
-    next(stream)
-
-    if stream.head.type != 'name':
-        raise InvalidSyntax('Expected name, found {}'.format(word.type))
-
     args = [stream.head.value]
-
     next(stream)
+
     more = morenames(stream)
     while more is not None:
         args.append(more)
         more = morenames(stream)
-
-    if stream.head.type != ')':
-        raise InvalidSyntax('Expected ), found {}'.format(word.type))
 
     return args
 
@@ -345,7 +350,7 @@ def morenames(stream):
     next(stream)
 
     if stream.head.type != 'name':
-        raise InvalidSyntax('Expected name, found {}'.format(word.type))
+        raise InvalidSyntax('Expected name, found {}'.format(stream.head.type))
 
     name = stream.head.value
     next(stream)
@@ -468,24 +473,54 @@ def term_prime(stream):
 def factor(stream):
     if stream.head.type == '(':
         next(stream)
-        e = expr(stream)
+        e = comp(stream)
 
         if word.type != ')':
-            raise InvalidSyntax('Expected ), found', word.type)
+            raise InvalidSyntax('Expected ), found', stream.head.type)
 
         next(stream)
         return e
     else:
-        return atom(stream)
+        return atomcalls(stream)
+
+
+def atomcalls(stream):
+    node = atom(stream)
+
+    for a in callsargs(stream):
+        node = FunCall(node, a)
+
+    return node
+
+
+def callsargs(stream):
+    all_allsargs = []
+
+    while stream.head.type == '(':
+
+        next(stream)
+
+        all_allsargs.append(args(stream))
+
+        if stream.head.type != ')':
+            raise InvalidSyntax('Expected ), found', stream.head.type)
+
+        next(stream)
+
+    return all_allsargs
 
 
 def atom(stream):
-    if stream.head.type == 'num':
+    lamb = lambdef(stream)
+    if lamb is not None:
+        return lamb
+
+    elif stream.head.type == 'num':
         w = stream.head
         next(stream)
         return Num(w.value)
 
-    if stream.head.type == 'string':
+    elif stream.head.type == 'string':
         w = stream.head
         next(stream)
         return String(w.value)
@@ -495,41 +530,18 @@ def atom(stream):
         w = stream.head
         next(stream)
 
-        prime = atom_prime(stream)
-
-        # Function call
-        if prime is not None:
-            return FunCall(
-                w.value,
-                prime,
-            )
-
-        # Variable lookup
-        else:
-            return VarLookup(w.value)
+        return VarLookup(w.value)
 
     raise InvalidSyntax('Unable to parse atom {}'.format(stream.head.value))
 
 
-def atom_prime(stream):
-    if stream.head.type == '(':
-        w = stream.head
-        next(stream)
-        a = args(stream)
-        if stream.head.type != ')':
-            raise InvalidSyntax('Expected ), found', stream.head.type)
-
-        next(stream)
-
-        return a
-    else:
-        return None
-
-
 def args(stream):
+    if stream.head.type == ')':
+        return []
+
     arglist = []
 
-    a = expr(stream)
+    a = comp(stream)
     while a is not None:
         arglist.append(a)
         a = moreargs(stream)
@@ -542,10 +554,24 @@ def moreargs(stream):
         w = stream.head
         next(stream)
 
-        return expr(stream)
+        return comp(stream)
 
     else:
         return None
+
+
+def lambdef(stream):
+    if stream.head.value != '\\':
+        return None
+
+    next(stream)
+    al = argsdef(stream)
+    stream.test('{')
+    next(stream)
+    ss = stmts(stream)
+    stream.test('}')
+    next(stream)
+    return LambDef(al, ss)
 
 
 parse = stmts
