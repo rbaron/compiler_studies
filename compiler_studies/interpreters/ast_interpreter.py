@@ -74,8 +74,8 @@ def eval_funcall(ast, env):
     if len(fun.args) != len(ast.args):
         raise RuntimeError('Wrong number of arguments for {}'.format(ast.name))
 
-    # Augment environment with arguments
-    new_env = Env(env, **{
+    # Augment function environment with arguments
+    new_env = Env(fun.env, **{
         name: value
         for (name, value) in zip(fun.args, args)
     })
@@ -141,8 +141,8 @@ def main():
     '''
     prog = '''
         a = \() {
-            // b = 1 - closure
-            return \() { return 1 }
+            b = 1
+            return \() { return b + 2 }
         }
         print(a()())
     '''
