@@ -77,10 +77,6 @@
 from compiler_studies.scanners import scanner1
 
 
-word = None
-words = None
-
-
 class Node:
     __counter = 0
 
@@ -169,21 +165,6 @@ class IfElse(Node):
         return [self.cond, self.cons, self.alt]
 
 
-class FunDef(Node):
-    def __init__(self, name, args, body):
-        super().__init__()
-        self.name = name
-        self.args = args
-        self.body = body
-
-    def __str__(self):
-        return '<{} FunDef {} ({})>'.format(self.id, self.name, self.args)
-
-    @property
-    def children(self):
-        return [self.body]
-
-
 class LambDef(Node):
     def __init__(self, args, body):
         super().__init__()
@@ -227,7 +208,7 @@ def stmts(stream):
     s = stmt(stream)
 
     if s is None:
-        raise InvalidSyntax('Invalid statement {}'.format(word))
+        raise InvalidSyntax('Invalid statement {}'.format(stream.head))
 
     while s is not None:
         lst.append(s)
@@ -475,7 +456,7 @@ def factor(stream):
         next(stream)
         e = comp(stream)
 
-        if word.type != ')':
+        if stream.head.type != ')':
             raise InvalidSyntax('Expected ), found', stream.head.type)
 
         next(stream)
@@ -526,7 +507,6 @@ def atom(stream):
         return String(w.value)
 
     elif stream.head.type == 'name':
-        w = word
         w = stream.head
         next(stream)
 
@@ -655,7 +635,7 @@ def main():
     s = parse(stream)
 
     if not stream.is_eof():
-        raise InvalidSyntax('Leftover starting with {}'.format(word))
+        raise InvalidSyntax('Leftover starting with {}'.format(stream.head))
 
     #pprint(e)
     print_dot(s)
