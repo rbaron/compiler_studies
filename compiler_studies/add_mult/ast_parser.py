@@ -23,16 +23,16 @@ class Stream:
 
 class ASTNode:
     _counter = 0
-    def __init__(self, type, left, right):
+    def __init__(self, op, left, right):
         self.id = ASTNode._counter
         ASTNode._counter += 1
 
-        self.type = type
+        self.op = op
         self.left = left
         self.right = right
 
     def __str__(self):
-        return '"{}" [label = "{}"]'.format(self.id, self.type)
+        return '"{}" [label = "{}"]'.format(self.id, self.op)
 
 
 class ASTLeaf:
@@ -111,6 +111,9 @@ def factor(stream):
         raise ValueError('Invalid factor token: {}'.format(stream.head.value))
 
 
+parse = expr
+
+
 def print_dot(node):
     def inner(node):
         if not isinstance(node, ASTNode):
@@ -129,7 +132,7 @@ def print_dot(node):
 
 def test():
     string = '''
-        1 + 2 * 3 + 4 + 5 * 2
+        1 + 2 * 3 + (4 + 5 * 2)
     '''
 
     stream = Stream(scanner.scan(string))
