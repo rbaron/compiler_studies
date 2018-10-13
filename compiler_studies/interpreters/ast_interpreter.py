@@ -4,7 +4,6 @@ from compiler_studies.parsers.ast import parser
 
 
 def eval(ast, env):
-    #print('Evaling ', ast)
     if isinstance(ast, parser.Stmts):
         for stmt in ast.stmts:
             if isinstance(stmt, parser.Return):
