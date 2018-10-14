@@ -1,3 +1,5 @@
+import sys
+
 from compiler_studies.add_mult import ast_parser, scanner
 
 
@@ -17,10 +19,7 @@ def eval(node):
 
 
 def test():
-    string = '''
-        1 + 2 * 3 + (4 + 5 * 2)
-    '''
-
+    string = sys.argv[1]
     stream = ast_parser.Stream(scanner.scan(string))
     ast = ast_parser.parse(stream)
 

@@ -1,3 +1,5 @@
+import sys
+
 from compiler_studies.add_mult import scanner
 
 
@@ -131,10 +133,7 @@ def print_dot(node):
 
 
 def test():
-    string = '''
-        1 + 2 * 3 + (4 + 5 * 2)
-    '''
-
+    string = sys.argv[1]
     stream = Stream(scanner.scan(string))
     parsed_expr = expr(stream)
 
