@@ -33,7 +33,7 @@ def eval(ast, env):
         return eval(ast.cons, env) if eval(ast.cond, env) else eval(ast.alt, env)
 
     elif isinstance(ast, parser.LambDef):
-        return Function('lambda', ast.args, ast.body, env)
+        return Function(ast.args, ast.body, env)
 
     elif isinstance(ast, parser.FunCall):
         return apply(ast, env)
@@ -88,14 +88,13 @@ def apply(ast, env):
 
 
 class Function:
-    def __init__(self, name, args, body, env):
-        self.name = name
+    def __init__(self, args, body, env):
         self.args = args
         self.body = body
         self.env = env
 
     def __repr__(self):
-        return '<Function {}>'.format(self.name)
+        return '<Function>'
 
 
 class NativeFunction:
@@ -155,6 +154,20 @@ def main():
     #}
     #print(inc(1))
     #'''
+
+    prog = '''
+        a = 1
+
+        make_inc = \(n) {
+            a = n
+            return \() {
+              return a + 1
+            }
+        }
+
+        print(make_inc(1)())
+        print(a)
+    '''
 
     stream = parser.Stream(scanner.scan(prog))
     ast = parser.parse(stream)
