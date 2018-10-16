@@ -15,14 +15,6 @@
 
 <IfElse>    ::= if <Comp> { <Stmts> } else { <Stmts> }
 
-<Return>    ::= return <Expr>
-
-<ArgNames>  ::= name <MoreNames>
-             |  $
-
-<MoreNames> ::= , name <MoreAtoms>
-             |  $
-
 <Comment>   ::= comment
 
 # Run time check?
@@ -51,17 +43,13 @@
              |  $
 
 <Factor>    ::= ( <Comp> )
-             |  <AtomCalls>
-
-<AtomCalls>  ::= <Atom> <CallsArgs>
-
-<CallsArgs>  ::= ( <Args> ) <CallsArgs>
-             |   $
-
-<Atom>      ::= name
+             |  name <CallsArgs>
              |  num
              |  string
              |  <LambDef>
+
+<CallsArgs>  ::= ( <Args> ) <CallsArgs>
+             |   $
 
 <Args>      ::= <Expr> <MoreArgs>
              | $
@@ -71,5 +59,15 @@
 
 <LambDef>   ::= \ <ArgsDef> { <Stmts> }
 
-<ArgsDef>   ::= ( <ArgNames> )
+<Return>    ::= return <Expr>
+
+<ArgsDef>   ::= ( <ArgsNames> )
+
+<ArgsNames>  ::= name <MoreNames>
+             |  $
+
+<MoreNames> ::= , name <MoreNames>
+             |  $
+
+
 ```

@@ -9,7 +9,7 @@ class Node:
         Node.__counter += 1
 
     def __str__(self):
-        return '<{} {}>'.format(self.id, self.__class__.__name__)
+        return '"{}" [label = "{}"]'.format(self.id, self.__class__.__name__)
 
 
 class ASTNode(Node):
@@ -21,7 +21,7 @@ class ASTNode(Node):
         self.children = [c for c in children if c is not None] or []
 
     def __str__(self):
-        return '<{}:{}>'.format(self.id, self.type)
+        return '"{}" [label = "{}"]'.format(self.id, self.type)
 
 
 class ASTLeaf(Node):
@@ -36,7 +36,7 @@ class Atom(Node):
         self.value = value
 
     def __str__(self):
-        return '<{} {} {}>'.format(self.id, type(self).__name__, self.value)
+        return '"{}" [label = "{}"]'.format(self.id, self.value)
 
 
 class Comment(Node):
@@ -67,7 +67,7 @@ class FunCall(Node):
         self.args = args
 
     def __str__(self):
-        return '<{} FunCall {} | {} args>'.format(self.id, self.expr, len(self.args))
+        return '"{}" [label = "{}"]'.format(self.id, 'FunCall')
 
     @property
     def children(self):
@@ -82,7 +82,7 @@ class IfElse(Node):
         self.alt = alt
 
     def __str__(self):
-        return '<{} IfElse>'.format(self.id)
+        return '"{}" [label = "{}"]'.format(self.id, 'IfElse')
 
     @property
     def children(self):
@@ -96,7 +96,7 @@ class LambDef(Node):
         self.body = body
 
     def __str__(self):
-        return '<{} LambDef ({})>'.format(self.id, self.args)
+        return '"{}" [label = "{}"]'.format(self.id, 'LambDef')
 
     @property
     def children(self):
@@ -115,7 +115,8 @@ class Stmts(Node):
         self.stmts = stmts
 
     def __str__(self):
-        return '<{} Stmts>'.format(self.id)
+        #return '<{} Stmts>'.format(self.id)
+        return '"{}" [label = "{}"]'.format(self.id, 'Stmts')
 
     @property
     def children(self):
@@ -376,46 +377,6 @@ def term_prime(stream):
 
 
 def factor(stream):
-    if stream.head.type == '(':
-        next(stream)
-        e = comp(stream)
-
-        if stream.head.type != ')':
-            raise InvalidSyntax('Expected ), found', stream.head.type)
-
-        next(stream)
-        return e
-    else:
-        return atomcalls(stream)
-
-
-def atomcalls(stream):
-    node = atom(stream)
-
-    for a in callsargs(stream):
-        node = FunCall(node, a)
-
-    return node
-
-
-def callsargs(stream):
-    all_allsargs = []
-
-    while stream.head.type == '(':
-
-        next(stream)
-
-        all_allsargs.append(args(stream))
-
-        if stream.head.type != ')':
-            raise InvalidSyntax('Expected ), found', stream.head.type)
-
-        next(stream)
-
-    return all_allsargs
-
-
-def atom(stream):
     lamb = lambdef(stream)
     if lamb is not None:
         return lamb
@@ -434,9 +395,42 @@ def atom(stream):
         w = stream.head
         next(stream)
 
-        return VarLookup(w.value)
+        node = VarLookup(w.value)
+
+        # Do we have function calls after this name?
+        for a in callsargs(stream):
+            node = FunCall(node, a)
+
+        return node
+
+    if stream.head.type == '(':
+        next(stream)
+        e = comp(stream)
+
+        if stream.head.type != ')':
+            raise InvalidSyntax('Expected ), found', stream.head.type)
+
+        next(stream)
+        return e
 
     raise InvalidSyntax('Unable to parse atom {}'.format(stream.head.value))
+
+
+def callsargs(stream):
+    all_allsargs = []
+
+    while stream.head.type == '(':
+
+        next(stream)
+
+        all_allsargs.append(args(stream))
+
+        if stream.head.type != ')':
+            raise InvalidSyntax('Expected ), found', stream.head.type)
+
+        next(stream)
+
+    return all_allsargs
 
 
 def args(stream):
@@ -492,11 +486,12 @@ def print_dot(node):
 
     def inner(node):
         if not hasattr(node, 'children'):
-            print('"{}";'.format(node))
+            print('{};'.format(node))
             return
+        print('{};'.format(node))
 
         for child in node.children:
-            print('"{}" -> "{}";'.format(node, child))
+            print('{} -> {};'.format(node.id, child.id))
             inner(child)
 
     print('digraph G {')
@@ -540,7 +535,8 @@ def main():
     prog = '''
     func = \(n) {
         c = n + 42
-        a b
+        a
+        b
         return c
     }
 
@@ -550,7 +546,10 @@ def main():
         print('no')
     }
 
-    a = b + func(1 + len('hello, ' + 'world'), c)
+    a =  + func(1 + len('hello, ' + 'world'), c)
+    '''
+    prog = '''
+        a = 1 - 3 == 3 * 2
     '''
 
     lexemes = scanner.scan(prog)

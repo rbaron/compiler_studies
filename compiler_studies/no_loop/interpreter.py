@@ -36,7 +36,7 @@ def eval(ast, env):
         return Function('lambda', ast.args, ast.body, env)
 
     elif isinstance(ast, parser.FunCall):
-        return eval_funcall(ast, env)
+        return apply(ast, env)
 
 
 def eval_astnode(ast, env):
@@ -62,7 +62,7 @@ def eval_astnode(ast, env):
        return eval(left, env) <= eval(right, env)
 
 
-def eval_funcall(ast, env):
+def apply(ast, env):
     fun = eval(ast.expr, env)
 
     args = [eval(a, env) for a in ast.args]
@@ -146,6 +146,14 @@ def main():
     #        return \() { return b + 2 }
     #    }
     #    print(a()())
+    #'''
+
+    #prog = '''
+    #inc = \(n) {
+    #    next = n + 1
+    #    return next
+    #}
+    #print(inc(1))
     #'''
 
     stream = parser.Stream(scanner.scan(prog))
