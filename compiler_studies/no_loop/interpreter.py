@@ -1,3 +1,4 @@
+import argparse
 
 from compiler_studies.no_loop import scanner
 from compiler_studies.no_loop import ast_parser as parser
@@ -121,57 +122,25 @@ class Env(dict):
         return '<Env has_parent={} {}>'.format(has_parent, super().__repr__())
 
 
+def parse_args():
+    argsparser = argparse.ArgumentParser()
+    argsparser.add_argument('files', nargs='+', type=str)
+    return argsparser.parse_args()
+
+
 def main():
+    source_files = parse_args().files
+
     global_env = Env(
         print=NativeFunction('print', print),
     )
 
-    prog = '''
-        fib = \(n) {
-            if n <= 1 {
-                return 1
-            } else {
-                return fib(n-1) + fib(n-2)
-            }
-        }
+    for source_file in source_files:
+        with open(source_file) as f:
+            stream = parser.Stream(scanner.scan(f.read()))
+        ast = parser.parse(stream)
+        res = eval(ast, global_env)
 
-        print('The result is:', fib(5))
-    '''
-
-    # Check that functions are really first class citizens
-    #prog = '''
-    #    a = \() {
-    #        b = 1
-    #        return \() { return b + 2 }
-    #    }
-    #    print(a()())
-    #'''
-
-    #prog = '''
-    #inc = \(n) {
-    #    next = n + 1
-    #    return next
-    #}
-    #print(inc(1))
-    #'''
-
-    prog = '''
-        a = 1
-
-        make_inc = \(n) {
-            a = n
-            return \() {
-              return a + 1
-            }
-        }
-
-        print(make_inc(1)())
-        print(a)
-    '''
-
-    stream = parser.Stream(scanner.scan(prog))
-    ast = parser.parse(stream)
-    res = eval(ast, global_env)
     print(global_env)
 
 

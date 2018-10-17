@@ -361,7 +361,7 @@ def term_prime(stream):
         prime = term_prime(stream)
 
         if prime is not None:
-            prime.children = [t] + prime.children
+            prime.children = [f] + prime.children
             return ASTNode(
                 w.type,
                 [prime]
