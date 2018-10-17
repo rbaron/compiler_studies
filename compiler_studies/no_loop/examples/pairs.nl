@@ -38,15 +38,16 @@ print(get_tail(p1))
  */
 
 // Since we don't have a "null" value yet, we can improvise with a "sentinel". This represents the
-// "end" of a list
-end_of_list = \() {
+// empty of a list. Think of it as a global object (not really a list) that we convention to
+// represent all lists empty lists.
+empty_list = \() {
   return 0
 }
 
 make_range = \(lo, hi) {
   inner = \(n) {
     if n == hi {
-      return end_of_list
+      return empty_list
     } else {
       return make_pair(n, inner(n + 1))
     }
@@ -54,9 +55,9 @@ make_range = \(lo, hi) {
   return inner(lo)
 }
 
-// Prints the first element of the list and recurses on the rest, until the list is `end_of_list`
+// Prints the first element of the list and recurses on the rest, until the list is `empty_list`
 print_list = \(lst) {
-  if lst == end_of_list {
+  if lst == empty_list {
     return 0
   } else {
     print(get_head(lst))
@@ -77,8 +78,8 @@ print_list(range1)
  */
 
 map = \(f, lst) {
-  if lst == end_of_list {
-    return end_of_list
+  if lst == empty_list {
+    return empty_list
   } else {
     return  make_pair(f(get_head(lst)), map(f, get_tail(lst)))
   }

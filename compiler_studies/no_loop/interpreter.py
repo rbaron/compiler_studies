@@ -141,8 +141,6 @@ def main():
         ast = parser.parse(stream)
         res = eval(ast, global_env)
 
-    print(global_env)
-
 
 if __name__ == '__main__':
     main()
